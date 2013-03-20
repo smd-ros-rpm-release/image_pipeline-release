@@ -1,6 +1,6 @@
 <package>
   <name>image_proc</name>
-  <version>1.10.7</version>
+  <version>1.10.8</version>
   <description>Single image rectification and color processing.</description>
   <author>Patrick Mihelich</author>
   <author>Kurt Konolige</author>
@@ -14,6 +14,8 @@
   </export>
 
   <buildtool_depend>catkin</buildtool_depend>
+
+  <test_depend>rostest</test_depend>
   
   <build_depend>boost</build_depend>
   <build_depend>camera_calibration_parsers</build_depend>
