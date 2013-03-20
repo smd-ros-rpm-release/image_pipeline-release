@@ -148,8 +148,8 @@ def _get_corners(img, board, refine = True):
     Get corners for a particular chessboard for an image
     """
     w, h = cv.GetSize(img)
-    mono = cv.CreateMat(h, w, cv.CV_8UC1)
     if img.channels == 3:
+        mono = cv.CreateMat(h, w, cv.CV_8UC1)
         cv.CvtColor(img, mono, cv.CV_BGR2GRAY)
     else:
         mono = img
@@ -185,8 +185,11 @@ def _get_circles(img, board, pattern):
     Get circle centers for a symmetric or asymmetric grid
     """
     w, h = cv.GetSize(img)
-    mono = cv.CreateMat(h, w, cv.CV_8UC1)
-    cv.CvtColor(img, mono, cv.CV_BGR2GRAY)
+    if img.channels == 3:
+        mono = cv.CreateMat(h, w, cv.CV_8UC1)
+        cv.CvtColor(img, mono, cv.CV_BGR2GRAY)
+    else:
+        mono = img
 
     flag = cv2.CALIB_CB_SYMMETRIC_GRID
     if pattern == Patterns.ACircles:
@@ -737,8 +740,8 @@ class MonoCalibrator(Calibrator):
             gray_remap = self.remap(gray)
             gray_rect = gray_remap
             if x_scale != 1.0 or y_scale != 1.0:
-                gray_rect = cv.CreateMat(scrib.rows, scribe.cols, cv.CV_8UC1)
-                cv.Resize(gray_remap, grap_rect)
+                gray_rect = cv.CreateMat(scrib.rows, scrib.cols, cv.CV_8UC1)
+                cv.Resize(gray_remap, gray_rect)
 
             cv.CvtColor(gray_rect, scrib, cv.CV_GRAY2BGR)
 
@@ -1034,8 +1037,8 @@ class StereoCalibrator(Calibrator):
             lrect = lremap
             rrect = rremap
             if x_scale != 1.0 or y_scale != 1.0:
-                lrect = cv.CreateMat(lscrib.rows, lscribe.cols, cv.CV_8UC1)
-                rrect = cv.CreateMat(rscrib.rows, rscribe.cols, cv.CV_8UC1)
+                lrect = cv.CreateMat(lscrib.rows, lscrib.cols, cv.CV_8UC1)
+                rrect = cv.CreateMat(rscrib.rows, rscrib.cols, cv.CV_8UC1)
                 cv.Resize(lremap, lrect)
                 cv.Resize(rremap, rrect)
 
