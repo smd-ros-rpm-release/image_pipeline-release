@@ -1,6 +1,6 @@
 <package>
   <name>depth_image_proc</name>
-  <version>1.10.7</version>
+  <version>1.10.9</version>
   <description>
 
      Contains nodelets for processing depth images such as those
@@ -10,7 +10,7 @@
 
   </description>
   <author>Patrick Mihelich</author>
-  <maintainer email="vrabaud@willowgarage.com">Vincent Rabaud</maintainer>
+  <maintainer email="vincent.rabaud@gmail.com">Vincent Rabaud</maintainer>
   <license>BSD</license>
   <url>http://ros.org/wiki/depth_image_proc</url>
 
@@ -19,6 +19,8 @@
   </export>
 
   <buildtool_depend>catkin</buildtool_depend>
+
+  <test_depend>rostest</test_depend>
   
   <build_depend>boost</build_depend>
   <build_depend>cv_bridge</build_depend>
