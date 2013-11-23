@@ -1,0 +1,7 @@
+ros-hydro-stereo-image-proc (1.11.4-0precise) precise; urgency=high
+
+  * convert images to MONO8 when computing disparity if needed (#49)
+
+ -- Vincent Rabaud <vincent.rabaud@gmail.com>  Sat, 23 Nov 2013 13:10:55 +0100
+
+
