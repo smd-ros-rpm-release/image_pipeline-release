@@ -1,0 +1,7 @@
+ros-hydro-image-proc (1.11.6-0quantal) quantal; urgency=high
+
+  * fix bad OpenCV linkage (#53)
+
+ -- Vincent Rabaud <vincent.rabaud@gmail.com>  Wed, 29 Jan 2014 00:38:55 +0100
+
+
