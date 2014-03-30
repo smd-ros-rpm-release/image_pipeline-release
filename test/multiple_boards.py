@@ -33,8 +33,6 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 import roslib
-PKG = 'camera_calibration'
-roslib.load_manifest(PKG)
 import rostest
 import rospy
 import cv
@@ -60,7 +58,7 @@ class TestMultipleBoards(unittest.TestCase):
 
         stereo_cal = StereoCalibrator([board, small_board])
         
-        my_archive_name = "multi_board_calibration.tar.gz"
+        my_archive_name = roslib.packages.find_resource('camera_calibration', 'multi_board_calibration.tar.gz')[0]
         stereo_cal.do_tarfile_calibration(my_archive_name)
 
         stereo_cal.report()
