@@ -1,0 +1,13 @@
+ros-hydro-image-proc (1.11.7-0precise) precise; urgency=high
+
+
+
+ -- Vincent Rabaud <vincent.rabaud@gmail.com>  Thu, 27 Mar 2014 23:00:00 -0000
+
+ros-hydro-image-proc (1.11.6-0precise) precise; urgency=high
+
+  * fix bad OpenCV linkage (#53)
+
+ -- Vincent Rabaud <vincent.rabaud@gmail.com>  Wed, 29 Jan 2014 00:38:55 +0100
+
+
