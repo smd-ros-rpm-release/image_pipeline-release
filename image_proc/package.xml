@@ -1,6 +1,6 @@
 <package>
   <name>image_proc</name>
-  <version>1.11.7</version>
+  <version>1.10.14</version>
   <description>Single image rectification and color processing.</description>
   <author>Patrick Mihelich</author>
   <author>Kurt Konolige</author>
@@ -13,7 +13,7 @@
     <nodelet plugin="${prefix}/nodelet_plugins.xml" />
   </export>
 
-  <buildtool_depend version_gte="0.5.68">catkin</buildtool_depend>
+  <buildtool_depend>catkin</buildtool_depend>
 
   <test_depend>rostest</test_depend>
   
