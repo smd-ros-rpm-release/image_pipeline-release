@@ -1,6 +1,6 @@
 <package>
   <name>camera_calibration</name>
-  <version>1.10.13</version>
+  <version>1.10.14</version>
   <description>
      camera_calibration allows easy calibration of monocular or stereo
      cameras using a checkerboard calibration target.
@@ -14,6 +14,7 @@
   <test_depend>rostest</test_depend>
 
   <run_depend>image_geometry</run_depend>
+  <run_depend>message_filters</run_depend>
   <run_depend>opencv2</run_depend>
   <run_depend>rospy</run_depend>
   <run_depend>std_srvs</run_depend>
