@@ -1,6 +1,6 @@
 <package>
   <name>stereo_image_proc</name>
-  <version>1.10.14</version>
+  <version>1.12.1</version>
   <description>Stereo and single image rectification and disparity processing.</description>
   <author>Patrick Mihelich</author>
   <author>Kurt Konolige</author>
@@ -17,23 +17,25 @@
 
   <test_depend>rostest</test_depend>
   
+  <build_depend>cv_bridge</build_depend>
   <build_depend>dynamic_reconfigure</build_depend>
   <build_depend>image_geometry</build_depend>
   <build_depend>image_proc</build_depend>
   <build_depend>image_transport</build_depend>
+  <build_depend>libopencv-dev</build_depend>
   <build_depend>message_filters</build_depend>
   <build_depend>nodelet</build_depend>
-  <build_depend>opencv2</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>stereo_msgs</build_depend>
 
+  <run_depend>cv_bridge</run_depend>
   <run_depend>dynamic_reconfigure</run_depend>
   <run_depend>image_geometry</run_depend>
   <run_depend>image_proc</run_depend>
   <run_depend>image_transport</run_depend>
+  <run_depend>libopencv-dev</run_depend>
   <run_depend>message_filters</run_depend>
   <run_depend>nodelet</run_depend>
-  <run_depend>opencv2</run_depend>
   <run_depend>sensor_msgs</run_depend>
   <run_depend>stereo_msgs</run_depend>
 </package>
