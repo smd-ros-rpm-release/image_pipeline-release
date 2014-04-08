@@ -33,6 +33,8 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 import roslib
+PKG = 'camera_calibration'
+roslib.load_manifest(PKG)
 import rostest
 import rospy
 import cv
@@ -51,8 +53,7 @@ board.dim = 0.108
 
 class TestDirected(unittest.TestCase):
     def setUp(self):
-        tar_path = roslib.packages.find_resource('camera_calibration', 'camera_calibration.tar.gz')[0]
-        self.tar = tarfile.open(tar_path, 'r')
+        self.tar = tarfile.open('camera_calibration.tar.gz', 'r')
         self.limages = [image_from_archive(self.tar, "wide/left%04d.pgm" % i) for i in range(3, 15)]
         self.rimages = [image_from_archive(self.tar, "wide/right%04d.pgm" % i) for i in range(3, 15)]
         self.l = {}
@@ -69,19 +70,13 @@ class TestDirected(unittest.TestCase):
                 self.l[dim].append(rli)
                 self.r[dim].append(rri)
                 
-    def assert_good_mono(self, c, dim, max_err):
+    def assert_good_mono(self, c, dim):
         #c.report()
         self.assert_(len(c.ost()) > 0)
-        lin_err = 0
-        n = 0
-        for img in self.l[dim]:
-            lin_err_local = c.linear_error_from_image(img)
-            if lin_err_local:
-                lin_err += lin_err_local
-                n += 1
-        lin_err /= n
-        self.assert_(0.0 < lin_err, 'lin_err is %f' % lin_err)
-        self.assert_(lin_err < max_err, 'lin_err is %f' % lin_err)
+        img = self.l[dim][0]
+        lin_err = c.linear_error_from_image(img)
+        self.assert_(0.0 < lin_err)
+        self.assert_(lin_err < 1.0)
 
         flat = c.remap(img)
         self.assertEqual(cv.GetSize(img), cv.GetSize(flat))
@@ -89,22 +84,20 @@ class TestDirected(unittest.TestCase):
     def test_monocular(self):
         # Run the calibrator, produce a calibration, check it
         mc = MonoCalibrator([ board ], cv2.CALIB_FIX_K3)
-        max_errs = [0.1, 0.2, 0.4, 0.7]
-        for i, dim in enumerate(self.sizes):
+        for dim in self.sizes:
             mc.cal(self.l[dim])
-            self.assert_good_mono(mc, dim, max_errs[i])
+            self.assert_good_mono(mc, dim)
 
             # Make another calibration, import previous calibration as a message,
             # and assert that the new one is good.
 
             mc2 = MonoCalibrator([board])
             mc2.from_message(mc.as_message())
-            self.assert_good_mono(mc2, dim, max_errs[i])
+            self.assert_good_mono(mc2, dim)
 
     def test_stereo(self):
-        epierrors = [0.1, 0.2, 0.4, 1.0]
-        for i, dim in enumerate(self.sizes):
-            print("Dim =", dim)
+        for dim in self.sizes:
+            print "Dim =", dim
             sc = StereoCalibrator([board], cv2.CALIB_FIX_K3)
             sc.cal(self.l[dim], self.r[dim])
 
@@ -113,15 +106,9 @@ class TestDirected(unittest.TestCase):
 
             # NOTE: epipolar error currently increases with resolution.
             # At highest res expect error ~0.75
-            epierror = 0
-            n = 0
-            for l_img, r_img in zip(self.l[dim], self.r[dim]):
-                epierror_local = sc.epipolar_error_from_images(l_img, r_img)
-                if epierror_local:
-                    epierror += epierror_local
-                    n += 1
-            epierror /= n
-            self.assert_(epierror < epierrors[i], 'Epipolar error is %f for resolution i = %d' % (epierror, i))
+            epierror = sc.epipolar_error_from_images(self.l[dim][0], self.r[dim][0])
+            print "Epipolar error =", epierror
+            self.assert_(epierror < 0.8)
 
             self.assertAlmostEqual(sc.chessboard_size_from_images(self.l[dim][0], self.r[dim][0]), .108, 2)
 
