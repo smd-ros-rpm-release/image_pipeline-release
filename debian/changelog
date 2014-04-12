@@ -1,0 +1,34 @@
+ros-indigo-image-view (1.12.3-0saucy) saucy; urgency=high
+
+
+
+ -- Vincent Rabaud <vincent.rabaud@gmail.com>  Fri, 11 Apr 2014 22:00:00 -0000
+
+ros-indigo-image-view (1.12.2-0saucy) saucy; urgency=high
+
+
+
+ -- Vincent Rabaud <vincent.rabaud@gmail.com>  Mon, 07 Apr 2014 22:00:00 -0000
+
+ros-indigo-image-view (1.12.1-0saucy) saucy; urgency=high
+
+  * get proper opencv dependency
+  * Contributors: Vincent Rabaud
+
+ -- Vincent Rabaud <vincent.rabaud@gmail.com>  Sat, 05 Apr 2014 22:00:00 -0000
+
+ros-indigo-image-view (1.11.7-0saucy) saucy; urgency=high
+
+  * Added requirement for core.
+  * Contributors: Jonathan J Hunt
+
+ -- Vincent Rabaud <vincent.rabaud@gmail.com>  Thu, 27 Mar 2014 23:00:00 -0000
+
+ros-indigo-image-view (1.11.3-0saucy) saucy; urgency=high
+
+  * #41: allow image_saver to save image topics
+  * #40: use proper download URL
+
+ -- Vincent Rabaud <vincent.rabaud@gmail.com>  Sun, 06 Oct 2013 21:21:55 +0200
+
+
