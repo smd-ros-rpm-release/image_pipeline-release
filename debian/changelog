@@ -1,0 +1,36 @@
+ros-indigo-camera-calibration (1.12.5-0saucy) saucy; urgency=high
+
+  * Fix #68 <https://github.com/ros-perception/image_pipeline/issues/68>: StringIO issues in calibrator.py
+  * fix architecture independent
+  * Contributors: Miquel Massot, Vincent Rabaud
+
+ -- Vincent Rabaud <vincent.rabaud@gmail.com>  Sat, 10 May 2014 22:00:00 -0000
+
+ros-indigo-camera-calibration (1.12.4-0saucy) saucy; urgency=high
+
+
+
+ -- Vincent Rabaud <vincent.rabaud@gmail.com>  Sun, 27 Apr 2014 22:00:00 -0000
+
+ros-indigo-camera-calibration (1.12.3-0saucy) saucy; urgency=high
+
+  * camera_calibration: Fix Python import order
+  * Contributors: Scott K Logan
+
+ -- Vincent Rabaud <vincent.rabaud@gmail.com>  Fri, 11 Apr 2014 22:00:00 -0000
+
+ros-indigo-camera-calibration (1.12.2-0saucy) saucy; urgency=high
+
+  * Fixes a typo on stereo camera info service calls
+    Script works after correcting the call names.
+  * Contributors: JoonasMelin
+
+ -- Vincent Rabaud <vincent.rabaud@gmail.com>  Mon, 07 Apr 2014 22:00:00 -0000
+
+ros-indigo-camera-calibration (1.11.4-0saucy) saucy; urgency=high
+
+  * add visualization during calibration and several calibration flags (#48)
+
+ -- Vincent Rabaud <vincent.rabaud@gmail.com>  Sat, 23 Nov 2013 13:10:55 +0100
+
+
