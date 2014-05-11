@@ -1,3 +1,9 @@
+1.11.10 (2014-05-11)
+--------------------
+* image_view: Add depend on gtk2
+* fixes `#65 <https://github.com/ros-perception/image_pipeline/issues/65>`_
+* Contributors: Scott K Logan, Vincent Rabaud
+
 1.11.8 (2014-04-08)
 -------------------
 
