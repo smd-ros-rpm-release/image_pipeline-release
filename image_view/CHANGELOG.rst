@@ -1,11 +1,23 @@
-1.11.10 (2014-05-11)
---------------------
-* image_view: Add depend on gtk2
-* fixes `#65 <https://github.com/ros-perception/image_pipeline/issues/65>`_
-* Contributors: Scott K Logan, Vincent Rabaud
-
-1.11.8 (2014-04-08)
+1.12.5 (2014-05-11)
 -------------------
+* image_view: Add depend on gtk2
+* Contributors: Scott K Logan
+
+1.12.4 (2014-04-28)
+-------------------
+* fixes `#65 <https://github.com/ros-perception/image_pipeline/issues/65>`_
+* Contributors: Vincent Rabaud
+
+1.12.3 (2014-04-12)
+-------------------
+
+1.12.2 (2014-04-08)
+-------------------
+
+1.12.1 (2014-04-06)
+-------------------
+* get proper opencv dependency
+* Contributors: Vincent Rabaud
 
 1.11.7 (2014-03-28)
 -------------------
