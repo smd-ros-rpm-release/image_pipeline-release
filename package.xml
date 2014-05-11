@@ -1,6 +1,6 @@
 <package>
   <name>camera_calibration</name>
-  <version>1.10.15</version>
+  <version>1.10.16</version>
   <description>
      camera_calibration allows easy calibration of monocular or stereo
      cameras using a checkerboard calibration target.
@@ -25,5 +25,6 @@
 
   <export>
     <rosdoc config="rosdoc.yaml" />
+    <architecture_independent/>
   </export>
 </package>
