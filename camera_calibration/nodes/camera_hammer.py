@@ -32,6 +32,9 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+PKG = 'camera_calibration' # this package name
+import roslib; roslib.load_manifest(PKG)
+
 import rospy
 import sensor_msgs.msg
 import sensor_msgs.srv
@@ -65,11 +68,11 @@ track = CamInfoTracker()
 
 service = rospy.ServiceProxy("%s/set_camera_info" % rospy.remap_name("camera"), sensor_msgs.srv.SetCameraInfo)
 for i in range(1000):
-    print("\nIteration", i)
+    print "\nItreation", i
     m = random_camerainfo()
-    print(m)
+    print m
     response = service(m)
-    print(response)
+    print response
     start = rospy.get_time()
     outcome = False
     while True:
@@ -82,7 +85,7 @@ for i in range(1000):
         if rospy.get_time() - start > 5:
             break
         rospy.sleep(rospy.Duration(0.1))
-    print(track.val.P)
-    print('Outcome ====>', outcome)
+    print track.val.P
+    print 'Outcome ====>', outcome
     assert outcome
     assert response.success
