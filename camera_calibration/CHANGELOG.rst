@@ -1,3 +1,9 @@
+1.12.5 (2014-05-11)
+-------------------
+* Fix `#68 <https://github.com/ros-perception/image_pipeline/issues/68>`_: StringIO issues in calibrator.py
+* fix architecture independent
+* Contributors: Miquel Massot, Vincent Rabaud
+
 1.12.4 (2014-04-28)
 -------------------
 
