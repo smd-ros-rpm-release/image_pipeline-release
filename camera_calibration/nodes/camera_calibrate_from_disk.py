@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/python
 #
 # Software License Agreement (BSD License)
 #
@@ -35,57 +35,43 @@
 PKG = 'camera_calibration' # this package name
 import roslib; roslib.load_manifest(PKG)
 
-import rospy
-import sensor_msgs.msg
-import sensor_msgs.srv
-import time
-import random
+import os.path
+import sys
+import cv
+from camera_calibration.calibrator import MonoCalibrator, ChessboardInfo
 
-def rfill(a):
-    for i in range(len(a)):
-        a[i] = random.randint(0, 10)
+def main(args):
+  from optparse import OptionParser
+  parser = OptionParser()
+  parser.add_option("-s", "--size", default="8x6", help="specify chessboard size as nxm [default: %default]")
+  parser.add_option("-q", "--square", default=".108", help="specify chessboard square size in meters [default: %default]")
+  options, args = parser.parse_args()
+  size = tuple([int(c) for c in options.size.split('x')])
+  dim = float(options.square)
 
-def random_camerainfo():
-    m = sensor_msgs.msg.CameraInfo()
-    m.height = 480
-    m.width = 640
-    rfill(m.D)
-    rfill(m.K)
-    rfill(m.R)
-    rfill(m.P)
-    return m
+  images = []
+  for fname in args:
+    if os.path.isfile(fname):
+      img = cv.LoadImage(fname)
+      if img is None:
+        print >> sys.stderr, "[WARN] Couldn't open image " + fname + "!"
+        sys.exit(1)
+      else:
+        print "[INFO] Loaded " + fname + " (" + str(img.width) + "x" + str(img.height) + ")"
 
-class CamInfoTracker:
-    def __init__(self):
-        self.val = None
-        sub = rospy.Subscriber(rospy.remap_name('info'), sensor_msgs.msg.CameraInfo, self.setcam)
-    def setcam(self, caminfo):
-        self.val = caminfo
-        self.age = time.time()
+      images.append(img)
 
-rospy.init_node('camera_hammer')
-track = CamInfoTracker()
+  cboard = ChessboardInfo()
+  cboard.dim = dim
+  cboard.n_cols = size[0]
+  cboard.n_rows = size[1]
+  
+  mc = MonoCalibrator([cboard])
+  mc.cal(images)
+  print mc.as_message()
 
-service = rospy.ServiceProxy("%s/set_camera_info" % rospy.remap_name("camera"), sensor_msgs.srv.SetCameraInfo)
-for i in range(1000):
-    print "\nItreation", i
-    m = random_camerainfo()
-    print m
-    response = service(m)
-    print response
-    start = rospy.get_time()
-    outcome = False
-    while True:
-        try:
-            outcome = list(track.val.P) == list(m.P)
-        except:
-            pass
-        if outcome:
-            break
-        if rospy.get_time() - start > 5:
-            break
-        rospy.sleep(rospy.Duration(0.1))
-    print track.val.P
-    print 'Outcome ====>', outcome
-    assert outcome
-    assert response.success
+if __name__ == "__main__":
+  print >> sys.stderr, 'This script is deprecated. Use tarfile calibration instead'
+  if len(sys.argv) >= 2:
+    main(sys.argv[1:])
+

@@ -32,51 +32,26 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+PKG = 'camera_calibration' # this package name
+import roslib; roslib.load_manifest(PKG)
+
 import rospy
 import sensor_msgs.msg
 import sensor_msgs.srv
 import message_filters
-from message_filters import ApproximateTimeSynchronizer
+from camera_calibration.approxsync import ApproximateSynchronizer
 
 import os
-try:
-    from queue import Queue
-except ImportError:
-    from Queue import Queue
+import Queue
 import threading
 import functools
 
+import cv
 import cv2
-import numpy
 
-from camera_calibration.calibrator import MonoCalibrator, StereoCalibrator, ChessboardInfo, Patterns
+from camera_calibration.calibrator import cvmat_iterator, MonoCalibrator, StereoCalibrator, ChessboardInfo, Patterns
 from std_msgs.msg import String
 from std_srvs.srv import Empty
-
-class DisplayThread(threading.Thread):
-    """
-    Thread that displays the current images
-    It is its own thread so that all display can be done
-    in one thread to overcome imshow limitations and 
-    https://github.com/ros-perception/image_pipeline/issues/85
-    """
-    def __init__(self, queue, opencv_calibration_node):
-        threading.Thread.__init__(self)
-        self.queue = queue
-        self.opencv_calibration_node = opencv_calibration_node
-
-    def run(self):
-        cv2.namedWindow("display", cv2.WINDOW_NORMAL)
-        cv2.setMouseCallback("display", self.opencv_calibration_node.on_mouse)
-        cv2.createTrackbar("scale", "display", 0, 100, self.opencv_calibration_node.on_scale)
-        while True:
-            im = self.queue.get()
-            cv2.imshow("display", im)
-            k = cv2.waitKey(6) & 0xFF
-            if k in [27, ord('q')]:
-                rospy.signal_shutdown('Quit')
-            elif k == ord('s'):
-                self.opencv_calibration_node.screendump(im)
 
 class ConsumerThread(threading.Thread):
     def __init__(self, queue, function):
@@ -101,12 +76,12 @@ class CalibrationNode:
                 remapped = rospy.remap_name(svcname)
                 if remapped != svcname:
                     fullservicename = "%s/set_camera_info" % remapped
-                    print("Waiting for service", fullservicename, "...")
+                    print "Waiting for service", fullservicename, "..."
                     try:
                         rospy.wait_for_service(fullservicename, 5)
-                        print("OK")
+                        print "OK"
                     except rospy.ROSException:
-                        print("Service not found")
+                        print "Service not found"
                         rospy.signal_shutdown('Quit')
 
         self._boards = boards
@@ -128,8 +103,8 @@ class CalibrationNode:
         self.set_right_camera_info_service = rospy.ServiceProxy("%s/set_camera_info" % rospy.remap_name("right_camera"),
                                                                 sensor_msgs.srv.SetCameraInfo)
 
-        self.q_mono = Queue()
-        self.q_stereo = Queue()
+        self.q_mono = Queue.Queue()
+        self.q_stereo = Queue.Queue()
 
         self.c = None
 
@@ -155,13 +130,13 @@ class CalibrationNode:
     def handle_monocular(self, msg):
         if self.c == None:
             if self._camera_name:
-                self.c = MonoCalibrator(self._boards, self._calib_flags, self._pattern, name=self._camera_name)
+                self.c = MonoCalibrator(self._boards, flags=self._calib_flags, pattern=self._pattern, name=self._camera_name)
             else:
-                self.c = MonoCalibrator(self._boards, self._calib_flags, self._pattern)
+                self.c = MonoCalibrator(self._boards, flags=self._calib_flags, pattern=self._pattern)
 
         # This should just call the MonoCalibrator
         drawable = self.c.handle_msg(msg)
-        self.displaywidth = drawable.scrib.shape[1]
+        self.displaywidth = drawable.scrib.cols
         self.redraw_monocular(drawable)
 
     def handle_stereo(self, msg):
@@ -172,7 +147,7 @@ class CalibrationNode:
                 self.c = StereoCalibrator(self._boards, self._calib_flags, self._pattern)
 
         drawable = self.c.handle_msg(msg)
-        self.displaywidth = drawable.lscrib.shape[1] + drawable.rscrib.shape[1]
+        self.displaywidth = drawable.lscrib.cols + drawable.rscrib.cols
         self.redraw_stereo(drawable)
             
  
@@ -181,19 +156,19 @@ class CalibrationNode:
             return True
 
         for i in range(10):
-            print("!" * 80)
-        print()
-        print("Attempt to set camera info failed: " + response.status_message)
-        print()
+            print "!" * 80
+        print
+        print "Attempt to set camera info failed: " + response.status_message
+        print
         for i in range(10):
-            print("!" * 80)
-        print()
+            print "!" * 80
+        print
         rospy.logerr('Unable to set camera info for calibration. Failure message: %s' % response.status_message)
         return False
 
     def do_upload(self):
         self.c.report()
-        print(self.c.ost())
+        print self.c.ost()
         info = self.c.as_message()
 
         rv = True
@@ -210,29 +185,18 @@ class CalibrationNode:
 
 class OpenCVCalibrationNode(CalibrationNode):
     """ Calibration node with an OpenCV Gui """
-    FONT_FACE = cv2.FONT_HERSHEY_SIMPLEX
-    FONT_SCALE = 0.6
-    FONT_THICKNESS = 2
 
     def __init__(self, *args):
 
         CalibrationNode.__init__(self, *args)
-
-        self.queue_display = Queue()
-        display_thread = DisplayThread(self.queue_display, self)
-        display_thread.setDaemon(True)
-        display_thread.start()
-
-    @classmethod
-    def putText(cls, img, text, org, color = (0,0,0)):
-        cv2.putText(img, text, org, cls.FONT_FACE, cls.FONT_SCALE, color, thickness = cls.FONT_THICKNESS)
-
-    @classmethod
-    def getTextSize(cls, text):
-        return cv2.getTextSize(text, cls.FONT_FACE, cls.FONT_SCALE, cls.FONT_THICKNESS)[0]
+        cv.NamedWindow("display", cv.CV_WINDOW_NORMAL)
+        self.font = cv.InitFont(cv.CV_FONT_HERSHEY_SIMPLEX, 0.20, 1, thickness = 2)
+        #self.button = cv.LoadImage("%s/button.jpg" % roslib.packages.get_pkg_dir(PKG))
+        cv.SetMouseCallback("display", self.on_mouse)
+        cv.CreateTrackbar("scale", "display", 0, 100, self.on_scale)
 
     def on_mouse(self, event, x, y, flags, param):
-        if event == cv2.EVENT_LBUTTONDOWN and self.displaywidth < x:
+        if event == cv.CV_EVENT_LBUTTONDOWN and self.displaywidth < x:
             if self.c.goodenough:
                 if 180 <= y < 280:
                     self.c.do_calibration()
@@ -243,27 +207,35 @@ class OpenCVCalibrationNode(CalibrationNode):
                     # Only shut down if we set camera info correctly, #3993
                     if self.do_upload():
                         rospy.signal_shutdown('Quit')
+                        
+                        
+
+    def waitkey(self):
+        k = cv.WaitKey(6)
+        if k in [27, ord('q')]:
+            rospy.signal_shutdown('Quit')
+        return k
 
     def on_scale(self, scalevalue):
         if self.c.calibrated:
             self.c.set_alpha(scalevalue / 100.0)
 
     def button(self, dst, label, enable):
-        dst.fill(255)
-        size = (dst.shape[1], dst.shape[0])
+        cv.Set(dst, (255, 255, 255))
+        size = cv.GetSize(dst)
         if enable:
-            color = (155, 155, 80)
+            color = cv.RGB(155, 155, 80)
         else:
-            color = (224, 224, 224)
-        cv2.circle(dst, (size[0] / 2, size[1] / 2), min(size) / 2, color, -1)
-        (w, h) = self.getTextSize(label)
-        self.putText(dst, label, ((size[0] - w) / 2, (size[1] + h) / 2), (255,255,255))
+            color = cv.RGB(224, 224, 224)
+        cv.Circle(dst, (size[0] / 2, size[1] / 2), min(size) / 2, color, -1)
+        ((w, h), _) = cv.GetTextSize(label, self.font)
+        cv.PutText(dst, label, ((size[0] - w) / 2, (size[1] + h) / 2), self.font, (255,255,255))
 
     def buttons(self, display):
         x = self.displaywidth
-        self.button(display[180:280,x:x+100], "CALIBRATE", self.c.goodenough)
-        self.button(display[280:380,x:x+100], "SAVE", self.c.calibrated)
-        self.button(display[380:480,x:x+100], "COMMIT", self.c.calibrated)
+        self.button(cv.GetSubRect(display, (x,180,100,100)), "CALIBRATE", self.c.goodenough)
+        self.button(cv.GetSubRect(display, (x,280,100,100)), "SAVE", self.c.calibrated)
+        self.button(cv.GetSubRect(display, (x,380,100,100)), "COMMIT", self.c.calibrated)
 
     def y(self, i):
         """Set up right-size images"""
@@ -273,80 +245,86 @@ class OpenCVCalibrationNode(CalibrationNode):
         i = 0
         while os.access("/tmp/dump%d.png" % i, os.R_OK):
             i += 1
-        cv2.imwrite("/tmp/dump%d.png" % i, im)
+        cv.SaveImage("/tmp/dump%d.png" % i, im)
 
     def redraw_monocular(self, drawable):
-        height = drawable.scrib.shape[0]
-        width = drawable.scrib.shape[1]
+        width, height = cv.GetSize(drawable.scrib)
 
-        display = numpy.zeros((max(480, height), width + 100, 3), dtype=numpy.uint8)
-        display[0:height, 0:width,:] = drawable.scrib
-        display[0:height, width:width+100,:].fill(255)
+        display = cv.CreateMat(max(480, height), width + 100, cv.CV_8UC3)
+        cv.Zero(display)
+        cv.Copy(drawable.scrib, cv.GetSubRect(display, (0,0,width,height)))
+        cv.Set(cv.GetSubRect(display, (width,0,100,height)), (255, 255, 255))
 
 
         self.buttons(display)
         if not self.c.calibrated:
             if drawable.params:
                  for i, (label, lo, hi, progress) in enumerate(drawable.params):
-                    (w,_) = self.getTextSize(label)
-                    self.putText(display, label, (width + (100 - w) / 2, self.y(i)))
+                    (w,_),_ = cv.GetTextSize(label, self.font)
+                    cv.PutText(display, label, (width + (100 - w) / 2, self.y(i)), self.font, (0,0,0))
                     color = (0,255,0)
                     if progress < 1.0:
                         color = (0, int(progress*255.), 255)
-                    cv2.line(display,
+                    cv.Line(display,
                             (int(width + lo * 100), self.y(i) + 20),
                             (int(width + hi * 100), self.y(i) + 20),
                             color, 4)
 
         else:
-            self.putText(display, "lin.", (width, self.y(0)))
+            cv.PutText(display, "lin.", (width, self.y(0)), self.font, (0,0,0))
             linerror = drawable.linear_error
             if linerror < 0:
                 msg = "?"
             else:
                 msg = "%.2f" % linerror
                 #print "linear", linerror
-            self.putText(display, msg, (width, self.y(1)))
+            cv.PutText(display, msg, (width, self.y(1)), self.font, (0,0,0))
 
-        self.queue_display.put(display)
+        self.show(display)
 
     def redraw_stereo(self, drawable):
-        height = drawable.lscrib.shape[0]
-        width = drawable.lscrib.shape[1]
+        width, height = cv.GetSize(drawable.lscrib)
 
-        display = numpy.zeros((max(480, height), 2 * width + 100, 3), dtype=numpy.uint8)
-        display[0:height, 0:width,:] = drawable.lscrib
-        display[0:height, width:2*width,:] = drawable.rscrib
-        display[0:height, 2*width:2*width+100,:].fill(255)
+        display = cv.CreateMat(max(480, height), 2 * width + 100, cv.CV_8UC3)
+        cv.Zero(display)
+        cv.Copy(drawable.lscrib, cv.GetSubRect(display, (0,0,width,height)))
+        cv.Copy(drawable.rscrib, cv.GetSubRect(display, (width,0,width,height)))
+        cv.Set(cv.GetSubRect(display, (2 * width,0,100,height)), (255, 255, 255))
 
         self.buttons(display)
 
         if not self.c.calibrated:
             if drawable.params:
                 for i, (label, lo, hi, progress) in enumerate(drawable.params):
-                    (w,_) = self.getTextSize(label)
-                    self.putText(display, label, (2 * width + (100 - w) / 2, self.y(i)))
+                    (w,_),_ = cv.GetTextSize(label, self.font)
+                    cv.PutText(display, label, (2 * width + (100 - w) / 2, self.y(i)),
+                               self.font, (0,0,0))
                     color = (0,255,0)
                     if progress < 1.0:
                         color = (0, int(progress*255.), 255)
-                    cv2.line(display,
+                    cv.Line(display,
                             (int(2 * width + lo * 100), self.y(i) + 20),
                             (int(2 * width + hi * 100), self.y(i) + 20),
                             color, 4)
 
         else:
-            self.putText(display, "epi.", (2 * width, self.y(0)))
+            cv.PutText(display, "epi.", (2 * width, self.y(0)), self.font, (0,0,0))
             if drawable.epierror == -1:
                 msg = "?"
             else:
                 msg = "%.2f" % drawable.epierror
-            self.putText(display, msg, (2 * width, self.y(1)))
+            cv.PutText(display, msg, (2 * width, self.y(1)), self.font, (0,0,0))
             # TODO dim is never set anywhere. Supposed to be observed chessboard size?
             if drawable.dim != -1:
-                self.putText(display, "dim", (2 * width, self.y(2)))
-                self.putText(display, "%.3f" % drawable.dim, (2 * width, self.y(3)))
+                cv.PutText(display, "dim", (2 * width, self.y(2)), self.font, (0,0,0))
+                cv.PutText(display, "%.3f" % drawable.dim, (2 * width, self.y(3)), self.font, (0,0,0))
 
-        self.queue_display.put(display)
+        self.show(display)
+
+    def show(self, im):
+        cv.ShowImage("display", im)
+        if self.waitkey() == ord('s'):
+            self.screendump(im)
 
 
 def main():
@@ -390,6 +368,18 @@ def main():
                      type="int", default=2, metavar="NUM_COEFFS",
                      help="number of radial distortion coefficients to use (up to 6, default %default)")
     parser.add_option_group(group)
+    group = OptionGroup(parser, "Deprecated Options")
+    group.add_option("--rational-model",
+                     action="store_true", default=False,
+                     help="enable distortion coefficients k4, k5 and k6 (for high-distortion lenses)")
+    group.add_option("--fix-k1", action="store_true", default=False,
+                     help="do not change the corresponding radial distortion coefficient during the optimization")
+    group.add_option("--fix-k2", action="store_true", default=False)
+    group.add_option("--fix-k3", action="store_true", default=False)
+    group.add_option("--fix-k4", action="store_true", default=False)
+    group.add_option("--fix-k5", action="store_true", default=False)
+    group.add_option("--fix-k6", action="store_true", default=False)
+    parser.add_option_group(group)
     options, args = parser.parse_args()
 
     if len(options.size) != len(options.square):
@@ -407,9 +397,31 @@ def main():
     if options.approximate == 0.0:
         sync = message_filters.TimeSynchronizer
     else:
-        sync = functools.partial(ApproximateTimeSynchronizer, options.approximate)
+        sync = functools.partial(ApproximateSynchronizer, options.approximate)
 
     num_ks = options.k_coefficients
+    # Deprecated flags modify k_coefficients
+    if options.rational_model:
+        print "Option --rational-model is deprecated"
+        num_ks = 6
+    if options.fix_k6:
+        print "Option --fix-k6 is deprecated"
+        num_ks = min(num_ks, 5)
+    if options.fix_k5:
+        print "Option --fix-k5 is deprecated"
+        num_ks = min(num_ks, 4)
+    if options.fix_k4:
+        print "Option --fix-k4 is deprecated"
+        num_ks = min(num_ks, 3)
+    if options.fix_k3:
+        print "Option --fix-k3 is deprecated"
+        num_ks = min(num_ks, 2)
+    if options.fix_k2:
+        print "Option --fix-k2 is deprecated"
+        num_ks = min(num_ks, 1)
+    if options.fix_k1:
+        print "Option --fix-k1 is deprecated"
+        num_ks = 0
 
     calib_flags = 0
     if options.fix_principal_point:
@@ -439,7 +451,7 @@ def main():
     elif options.pattern == 'acircles':
         pattern = Patterns.ACircles
     elif options.pattern != 'chessboard':
-        print('Unrecognized pattern %s, defaulting to chessboard' % options.pattern)
+        print 'Unrecognized pattern %s, defaulting to chessboard' % options.pattern
 
     rospy.init_node('cameracalibrator')
     node = OpenCVCalibrationNode(boards, options.service_check, sync, calib_flags, pattern, options.camera_name)
@@ -448,6 +460,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as e:
+    except Exception, e:
         import traceback
         traceback.print_exc()

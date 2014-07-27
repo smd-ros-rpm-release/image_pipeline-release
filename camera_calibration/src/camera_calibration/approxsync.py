@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 #
 # Software License Agreement (BSD License)
 #
@@ -32,60 +32,36 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-PKG = 'camera_calibration' # this package name
-import roslib; roslib.load_manifest(PKG)
-
 import rospy
-import sensor_msgs.msg
-import sensor_msgs.srv
-import time
-import random
+import message_filters
+import threading
+import itertools
+import operator
 
-def rfill(a):
-    for i in range(len(a)):
-        a[i] = random.randint(0, 10)
+class ApproximateSynchronizer(message_filters.SimpleFilter):
 
-def random_camerainfo():
-    m = sensor_msgs.msg.CameraInfo()
-    m.height = 480
-    m.width = 640
-    rfill(m.D)
-    rfill(m.K)
-    rfill(m.R)
-    rfill(m.P)
-    return m
+    def __init__(self, slop, fs, queue_size):
+        message_filters.SimpleFilter.__init__(self)
+        self.connectInput(fs)
+        self.queue_size = queue_size
+        self.lock = threading.Lock()
+        self.slop = rospy.Duration.from_sec(slop)
 
-class CamInfoTracker:
-    def __init__(self):
-        self.val = None
-        sub = rospy.Subscriber(rospy.remap_name('info'), sensor_msgs.msg.CameraInfo, self.setcam)
-    def setcam(self, caminfo):
-        self.val = caminfo
-        self.age = time.time()
+    def connectInput(self, fs):
+        self.queues = [{} for f in fs]
+        self.input_connections = [f.registerCallback(self.add, q) for (f, q) in zip(fs, self.queues)]
 
-rospy.init_node('camera_hammer')
-track = CamInfoTracker()
-
-service = rospy.ServiceProxy("%s/set_camera_info" % rospy.remap_name("camera"), sensor_msgs.srv.SetCameraInfo)
-for i in range(1000):
-    print "\nItreation", i
-    m = random_camerainfo()
-    print m
-    response = service(m)
-    print response
-    start = rospy.get_time()
-    outcome = False
-    while True:
-        try:
-            outcome = list(track.val.P) == list(m.P)
-        except:
-            pass
-        if outcome:
-            break
-        if rospy.get_time() - start > 5:
-            break
-        rospy.sleep(rospy.Duration(0.1))
-    print track.val.P
-    print 'Outcome ====>', outcome
-    assert outcome
-    assert response.success
+    def add(self, msg, my_queue):
+        self.lock.acquire()
+        my_queue[msg.header.stamp] = msg
+        while len(my_queue) > self.queue_size:
+            del my_queue[min(my_queue)]
+        for vv in itertools.product(*[q.keys() for q in self.queues]):
+            qt = zip(self.queues, vv)
+            if (((max(vv) - min(vv)) < self.slop) and 
+                reduce(operator.and_, [q.has_key(t) for q,t in qt])):
+                msgs = [q[t] for q,t in qt]
+                self.signalMessage(*msgs)
+                for q,t in qt:
+                    del q[t]
+        self.lock.release()
