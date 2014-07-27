@@ -36,27 +36,6 @@
 #include <sensor_msgs/image_encodings.h>
 #include <stereo_msgs/DisparityImage.h>
 #include <opencv2/highgui/highgui.hpp>
-#include "window_thread.h"
-
-#ifdef HAVE_GTK
-#include <gtk/gtk.h>
-
-// Platform-specific workaround for #3026: image_view doesn't close when
-// closing image window. On platforms using GTK+ we connect this to the
-// window's "destroy" event so that image_view exits.
-static void destroyNode(GtkWidget *widget, gpointer data)
-{
-  exit(0);
-}
-
-static void destroyNodelet(GtkWidget *widget, gpointer data)
-{
-  // We can't actually unload the nodelet from here, but we can at least
-  // unsubscribe from the image topic.
-  reinterpret_cast<ros::Subscriber*>(data)->shutdown();
-}
-#endif
-
 
 namespace image_view {
 
@@ -100,18 +79,6 @@ void DisparityNodelet::onInit()
   local_nh.param("autosize", autosize, false);
 
   cv::namedWindow(window_name_, autosize ? CV_WINDOW_AUTOSIZE : 0);
-  
-#ifdef HAVE_GTK
-  // Register appropriate handler for when user closes the display window
-  GtkWidget *widget = GTK_WIDGET( cvGetWindowHandle(window_name_.c_str()) );
-  if (shutdown_on_close)
-    g_signal_connect(widget, "destroy", G_CALLBACK(destroyNode), NULL);
-  else
-    g_signal_connect(widget, "destroy", G_CALLBACK(destroyNodelet), &sub_);
-#endif
-
-  // Start the OpenCV window thread so we don't have to waitKey() somewhere
-  startWindowThread();
 
   sub_ = nh.subscribe<stereo_msgs::DisparityImage>(topic, 1, &DisparityNodelet::imageCb, this);
 }
@@ -144,13 +111,15 @@ void DisparityNodelet::imageCb(const stereo_msgs::DisparityImageConstPtr& msg)
     
   for (int row = 0; row < disparity_color_.rows; ++row) {
     const float* d = dmat[row];
-    for (int col = 0; col < disparity_color_.cols; ++col) {
-      int index = (d[col] - min_disparity) * multiplier + 0.5;
+    cv::Vec3b *disparity_color = disparity_color_[row],
+              *disparity_color_end = disparity_color + disparity_color_.cols;
+    for (; disparity_color < disparity_color_end; ++disparity_color, ++d) {
+      int index = (*d - min_disparity) * multiplier + 0.5;
       index = std::min(255, std::max(0, index));
       // Fill as BGR
-      disparity_color_(row, col)[2] = colormap[3*index + 0];
-      disparity_color_(row, col)[1] = colormap[3*index + 1];
-      disparity_color_(row, col)[0] = colormap[3*index + 2];
+      (*disparity_color)[2] = colormap[3*index + 0];
+      (*disparity_color)[1] = colormap[3*index + 1];
+      (*disparity_color)[0] = colormap[3*index + 2];
     }
   }
 
@@ -162,6 +131,7 @@ void DisparityNodelet::imageCb(const stereo_msgs::DisparityImageConstPtr& msg)
 #endif
   
   cv::imshow(window_name_, disparity_color_);
+  cv::waitKey(1);
 }
 
 unsigned char DisparityNodelet::colormap[768] =
