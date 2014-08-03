@@ -131,7 +131,7 @@ def _get_area(corners, board):
     q = a + b
     return abs(p[0]*q[1] - p[1]*q[0]) / 2.
 
-def _get_corners(img, board, refine = True):
+def _get_corners(img, board, refine = True, checkerboard_flags=0):
     """
     Get corners for a particular chessboard for an image
     """
@@ -141,7 +141,8 @@ def _get_corners(img, board, refine = True):
         mono = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     else:
         mono = img
-    (ok, corners) = cv2.findChessboardCorners(mono, (board.n_cols, board.n_rows), flags = cv2.CALIB_CB_ADAPTIVE_THRESH | cv2.CALIB_CB_NORMALIZE_IMAGE | cv2.CALIB_CB_FAST_CHECK)
+    (ok, corners) = cv2.findChessboardCorners(mono, (board.n_cols, board.n_rows), flags = cv2.CALIB_CB_ADAPTIVE_THRESH |
+                                              cv2.CALIB_CB_NORMALIZE_IMAGE | checkerboard_flags)
     if not ok:
         return (ok, corners)
 
@@ -201,7 +202,7 @@ class Calibrator(object):
     """
     Base class for calibration system
     """
-    def __init__(self, boards, flags=0, pattern=Patterns.Chessboard, name=''):
+    def __init__(self, boards, flags=0, pattern=Patterns.Chessboard, name='', checkerboard_flags=0):
         # Ordering the dimensions for the different detectors is actually a minefield...
         if pattern == Patterns.Chessboard:
             # Make sure n_cols > n_rows to agree with OpenCV CB detector output
@@ -216,6 +217,7 @@ class Calibrator(object):
         # Set to true after we perform calibration
         self.calibrated = False
         self.calib_flags = flags
+        self.checkerboard_flags = checkerboard_flags
         self.pattern = pattern
         self.br = cv_bridge.CvBridge()
 
@@ -339,7 +341,7 @@ class Calibrator(object):
 
         for b in self._boards:
             if self.pattern == Patterns.Chessboard:
-                (ok, corners) = _get_corners(img, b, refine)
+                (ok, corners) = _get_corners(img, b, refine, self.checkerboard_flags)
             else:
                 (ok, corners) = _get_circles(img, b, self.pattern)
             if ok:
@@ -698,7 +700,7 @@ class MonoCalibrator(Calibrator):
             gray_remap = self.remap(gray)
             gray_rect = gray_remap
             if x_scale != 1.0 or y_scale != 1.0:
-                gray_rect = cv2.resize(gray_remap, (scrib_mono.shape[1], scrib_mono.shape[0]), numpy.uint8)
+                gray_rect = cv2.resize(gray_remap, (scrib_mono.shape[1], scrib_mono.shape[0]))
 
             scrib = cv2.cvtColor(gray_rect, cv2.COLOR_GRAY2BGR)
 
@@ -987,8 +989,8 @@ class StereoCalibrator(Calibrator):
             lrect = lremap
             rrect = rremap
             if x_scale != 1.0 or y_scale != 1.0:
-                lrect = cv2.resize(lremap, (lscrib_mono.shape[1], lscrib_mono.shape[0]), numpy.uint8)
-                rrect = cv2.resize(rremap, (rscrib_mono.shape[1], rscrib_mono.shape[0]), numpy.uint8)
+                lrect = cv2.resize(lremap, (lscrib_mono.shape[1], lscrib_mono.shape[0]))
+                rrect = cv2.resize(rremap, (rscrib_mono.shape[1], rscrib_mono.shape[0]))
 
             lscrib = cv2.cvtColor(lrect, cv2.COLOR_GRAY2BGR)
             rscrib = cv2.cvtColor(rrect, cv2.COLOR_GRAY2BGR)
