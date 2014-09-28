@@ -1,3 +1,9 @@
+1.12.10 (2014-09-28)
+--------------------
+* Update calibrator.py
+  bugfix: stereo calibrator crashed after the signature of the method for the computation of the epipolar error changed but the function call was not updated
+* Contributors: Volker Grabe
+
 1.12.9 (2014-09-21)
 -------------------
 * fix bad Python
